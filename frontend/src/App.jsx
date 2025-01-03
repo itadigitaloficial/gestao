@@ -9,6 +9,7 @@ import Login from './components/auth/Login';
 import Dashboard from './components/dashboard/Dashboard';
 import ProjectList from './components/projects/ProjectList';
 import Layout from './components/layout/Layout';
+import LandingPage from './components/landing/LandingPage';
 
 // Tema personalizado
 const theme = createTheme({
@@ -43,10 +44,11 @@ const App = () => {
       <CssBaseline />
       <Router>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<Login />} />
           
           <Route
-            path="/"
+            path="/dashboard"
             element={
               <PrivateRoute>
                 <Layout>
