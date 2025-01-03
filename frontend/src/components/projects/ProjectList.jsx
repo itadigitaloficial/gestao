@@ -35,10 +35,12 @@ const ProjectList = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    fetchProjects();
-  }, [user]);
+    if (user) {
+      fetchProjects();
+    }
+  }, [user, fetchProjects]);
 
-  const fetchProjects = async () => {
+  const fetchProjects = React.useCallback(async () => {
     try {
       const projectsRef = collection(db, 'projects');
       const q = query(projectsRef, where('members', 'array-contains', user.uid));
@@ -53,7 +55,7 @@ const ProjectList = () => {
     } catch (error) {
       console.error('Erro ao carregar projetos:', error);
     }
-  };
+  }, [user]);
 
   const handleOpen = (project = null) => {
     if (project) {
