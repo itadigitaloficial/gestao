@@ -10,8 +10,26 @@ import {
   MenuItem,
   Select,
   FormControl,
-  InputLabel
+  InputLabel,
+  IconButton,
+  Card,
+  CardContent,
+  Avatar,
+  LinearProgress,
+  Tooltip,
+  styled,
+  Chip
 } from '@mui/material';
+import {
+  MoreVert as MoreVertIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  ArrowDownward as ArrowDownwardIcon,
+  Assignment as AssignmentIcon,
+  Group as GroupIcon,
+  AccessTime as AccessTimeIcon,
+  CheckCircle as CheckCircleIcon,
+  Warning as WarningIcon
+} from '@mui/icons-material';
 import {
   BarChart,
   Bar,
@@ -21,18 +39,124 @@ import {
   Line,
   XAxis,
   YAxis,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   ResponsiveContainer,
-  Cell
+  Cell,
+  AreaChart,
+  Area
 } from 'recharts';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { Download as DownloadIcon } from '@mui/icons-material';
-import * as XLSX from 'xlsx';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+
+const StyledCard = styled(Card)(({ theme }) => ({
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  position: 'relative',
+  '&:hover': {
+    boxShadow: theme.shadows[4],
+  },
+  transition: 'box-shadow 0.3s ease-in-out',
+}));
+
+const StatCard = ({ title, value, icon, color, trend, trendValue }) => (
+  <StyledCard>
+    <CardContent>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <Avatar sx={{ bgcolor: color, width: 56, height: 56 }}>
+          {icon}
+        </Avatar>
+        <IconButton>
+          <MoreVertIcon />
+        </IconButton>
+      </Box>
+      <Typography variant="h4" component="div" gutterBottom>
+        {value}
+      </Typography>
+      <Typography color="textSecondary" variant="subtitle2">
+        {title}
+      </Typography>
+      {trend && (
+        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+          {trend === 'up' ? (
+            <ArrowUpwardIcon sx={{ color: 'success.main', fontSize: 16 }} />
+          ) : (
+            <ArrowDownwardIcon sx={{ color: 'error.main', fontSize: 16 }} />
+          )}
+          <Typography
+            variant="caption"
+            sx={{
+              color: trend === 'up' ? 'success.main' : 'error.main',
+              ml: 0.5,
+            }}
+          >
+            {trendValue}% em relação ao mês anterior
+          </Typography>
+        </Box>
+      )}
+    </CardContent>
+  </StyledCard>
+);
+
+const TaskCard = ({ task }) => (
+  <Paper sx={{ p: 2, mb: 2, display: 'flex', alignItems: 'center' }}>
+    <Avatar sx={{ bgcolor: task.priority === 'Alta' ? 'error.main' : 'primary.main', mr: 2 }}>
+      {task.title[0]}
+    </Avatar>
+    <Box sx={{ flexGrow: 1 }}>
+      <Typography variant="subtitle1">{task.title}</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+        <AccessTimeIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+        <Typography variant="caption" color="textSecondary">
+          {task.dueDate}
+        </Typography>
+        <Box sx={{ ml: 2, display: 'flex', alignItems: 'center' }}>
+          <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
+            {task.assignee[0]}
+          </Avatar>
+        </Box>
+      </Box>
+    </Box>
+    <Chip
+      label={task.status}
+      size="small"
+      color={task.status === 'Concluída' ? 'success' : 'default'}
+    />
+  </Paper>
+);
+
+const ProjectProgressCard = ({ project }) => (
+  <Paper sx={{ p: 2, mb: 2 }}>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+      <Typography variant="subtitle1">{project.name}</Typography>
+      <Typography variant="subtitle2" color="textSecondary">
+        {project.progress}%
+      </Typography>
+    </Box>
+    <LinearProgress
+      variant="determinate"
+      value={project.progress}
+      sx={{
+        height: 8,
+        borderRadius: 4,
+        bgcolor: 'rgba(0, 0, 0, 0.1)',
+        '& .MuiLinearProgress-bar': {
+          borderRadius: 4,
+        },
+      }}
+    />
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+      <Typography variant="caption" color="textSecondary">
+        {project.startDate}
+      </Typography>
+      <Typography variant="caption" color="textSecondary">
+        {project.endDate}
+      </Typography>
+    </Box>
+  </Paper>
+);
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
@@ -197,88 +321,94 @@ const Dashboard = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Dashboard</Typography>
-        <Box>
-          <FormControl sx={{ minWidth: 120, mr: 2 }}>
-            <InputLabel>Período</InputLabel>
-            <Select
-              value={filterPeriod}
-              label="Período"
-              onChange={(e) => setFilterPeriod(e.target.value)}
-            >
-              <MenuItem value="month">Mensal</MenuItem>
-              <MenuItem value="year">Anual</MenuItem>
-            </Select>
-          </FormControl>
-          <Button
-            variant="outlined"
-            startIcon={<DownloadIcon />}
-            onClick={exportToExcel}
-            sx={{ mr: 1 }}
-          >
-            Excel
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<DownloadIcon />}
-            onClick={exportToPDF}
-          >
-            PDF
-          </Button>
-        </Box>
-      </Box>
-
       <Grid container spacing={3}>
-        {/* Cards de Estatísticas */}
-        <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 140 }}>
-            <Typography color="textSecondary" gutterBottom>
-              Total de Projetos
-            </Typography>
-            <Typography component="p" variant="h4">
-              {stats.totalProjects}
-            </Typography>
-          </Paper>
+        {/* Estatísticas */}
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Total de Projetos"
+            value={stats.totalProjects}
+            icon={<AssignmentIcon />}
+            color="#1976d2"
+            trend="up"
+            trendValue={12}
+          />
         </Grid>
-        <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 140 }}>
-            <Typography color="textSecondary" gutterBottom>
-              Projetos Ativos
-            </Typography>
-            <Typography component="p" variant="h4">
-              {stats.activeProjects}
-            </Typography>
-          </Paper>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Projetos Ativos"
+            value={stats.activeProjects}
+            icon={<GroupIcon />}
+            color="#2e7d32"
+            trend="up"
+            trendValue={8}
+          />
         </Grid>
-        <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 140 }}>
-            <Typography color="textSecondary" gutterBottom>
-              Projetos Concluídos
-            </Typography>
-            <Typography component="p" variant="h4">
-              {stats.completedProjects}
-            </Typography>
-          </Paper>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Tarefas Pendentes"
+            value={stats.totalTasks}
+            icon={<WarningIcon />}
+            color="#ed6c02"
+            trend="down"
+            trendValue={5}
+          />
         </Grid>
-        <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 140 }}>
-            <Typography color="textSecondary" gutterBottom>
-              Total de Tarefas
-            </Typography>
-            <Typography component="p" variant="h4">
-              {stats.totalTasks}
-            </Typography>
+        <Grid item xs={12} sm={6} md={3}>
+          <StatCard
+            title="Tarefas Concluídas"
+            value={stats.completedTasks}
+            icon={<CheckCircleIcon />}
+            color="#9c27b0"
+            trend="up"
+            trendValue={15}
+          />
+        </Grid>
+
+        {/* Gráficos */}
+        <Grid item xs={12} md={8}>
+          <Paper sx={{ p: 3, height: '100%' }}>
+            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="h6">Evolução dos Projetos</Typography>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <Select
+                  value={filterPeriod}
+                  onChange={(e) => setFilterPeriod(e.target.value)}
+                >
+                  <MenuItem value="week">Semana</MenuItem>
+                  <MenuItem value="month">Mês</MenuItem>
+                  <MenuItem value="year">Ano</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={timelineData}>
+                <defs>
+                  <linearGradient id="colorTasks" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#1976d2" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#1976d2" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="date" />
+                <YAxis />
+                <RechartsTooltip />
+                <Area
+                  type="monotone"
+                  dataKey="tasks"
+                  stroke="#1976d2"
+                  fillOpacity={1}
+                  fill="url(#colorTasks)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </Paper>
         </Grid>
 
-        {/* Gráfico de Pizza - Status das Tarefas */}
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 400 }}>
+        <Grid item xs={12} md={4}>
+          <Paper sx={{ p: 3, height: '100%' }}>
             <Typography variant="h6" gutterBottom>
               Status das Tarefas
             </Typography>
-            <ResponsiveContainer>
+            <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
                   data={tasksByStatus}
@@ -293,49 +423,33 @@ const Dashboard = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <RechartsTooltip />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
           </Paper>
         </Grid>
 
-        {/* Gráfico de Linha - Evolução das Tarefas */}
+        {/* Tarefas Recentes e Projetos em Andamento */}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 400 }}>
+          <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Evolução das Tarefas
+              Tarefas Recentes
             </Typography>
-            <ResponsiveContainer>
-              <LineChart data={timelineData}>
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="tasks" stroke="#8884d8" />
-              </LineChart>
-            </ResponsiveContainer>
+            {recentTasks.map((task) => (
+              <TaskCard key={task.id} task={task} />
+            ))}
           </Paper>
         </Grid>
 
-        {/* Gráfico de Barras - Projetos por Status */}
-        <Grid item xs={12}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 400 }}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Projetos por Status
+              Progresso dos Projetos
             </Typography>
-            <ResponsiveContainer>
-              <BarChart data={[
-                { name: 'Em Andamento', value: stats.activeProjects },
-                { name: 'Concluídos', value: stats.completedProjects }
-              ]}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="value" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
+            {activeProjects.map((project) => (
+              <ProjectProgressCard key={project.id} project={project} />
+            ))}
           </Paper>
         </Grid>
       </Grid>
