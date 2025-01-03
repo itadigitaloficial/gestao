@@ -10,6 +10,7 @@ import Dashboard from './components/dashboard/Dashboard';
 import ProjectList from './components/projects/ProjectList';
 import Layout from './components/layout/Layout';
 import LandingPage from './components/landing/LandingPage';
+import ProjectDetails from './components/projects/ProjectDetails';
 
 // Tema personalizado
 const theme = createTheme({
@@ -64,6 +65,17 @@ const App = () => {
               <PrivateRoute>
                 <Layout>
                   <ProjectList />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/projects/:projectId"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <ProjectDetails />
                 </Layout>
               </PrivateRoute>
             }
