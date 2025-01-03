@@ -25,6 +25,7 @@ import {
   ExitToApp as LogoutIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../hooks/useAuth';
+import NotificationSystem from '../notifications/NotificationSystem';
 
 const drawerWidth = 240;
 
@@ -104,6 +105,7 @@ const Layout = ({ children }) => {
             <MenuIcon />
           </IconButton>
           <Box sx={{ flexGrow: 1 }} />
+          <NotificationSystem />
           <IconButton
             onClick={handleMenuOpen}
             color="inherit"

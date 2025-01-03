@@ -31,6 +31,9 @@ import { useParams } from 'react-router-dom';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../hooks/useAuth';
+import TaskForm from '../tasks/TaskForm';
+import CommentSection from '../comments/CommentSection';
+import FileUpload from '../files/FileUpload';
 
 const ProjectDetails = () => {
   const [project, setProject] = useState(null);
@@ -40,6 +43,8 @@ const ProjectDetails = () => {
   const [team, setTeam] = useState([]);
   const { projectId } = useParams();
   const { user } = useAuth();
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
 
   useEffect(() => {
     fetchProjectDetails();
@@ -91,6 +96,17 @@ const ProjectDetails = () => {
     if (!tasks.length) return 0;
     const completed = tasks.filter(task => task.status === 'Concluída').length;
     return (completed / tasks.length) * 100;
+  };
+
+  const handleEditTask = (task) => {
+    setSelectedTask(task);
+    setTaskFormOpen(true);
+  };
+
+  const handleTaskSaved = () => {
+    fetchTasks();
+    setTaskFormOpen(false);
+    setSelectedTask(null);
   };
 
   if (loading) {
@@ -258,7 +274,33 @@ const ProjectDetails = () => {
             </Box>
           )}
         </Box>
+
+        {/* Aba de Arquivos */}
+        <Box role="tabpanel" hidden={activeTab !== 2}>
+          {activeTab === 2 && (
+            <FileUpload projectId={projectId} />
+          )}
+        </Box>
+
+        {/* Aba de Comentários */}
+        <Box role="tabpanel" hidden={activeTab !== 3}>
+          {activeTab === 3 && (
+            <CommentSection projectId={projectId} />
+          )}
+        </Box>
       </Box>
+
+      {/* Adicione o TaskForm */}
+      <TaskForm
+        open={taskFormOpen}
+        onClose={() => {
+          setTaskFormOpen(false);
+          setSelectedTask(null);
+        }}
+        projectId={projectId}
+        task={selectedTask}
+        onTaskSaved={handleTaskSaved}
+      />
     </Container>
   );
 };
