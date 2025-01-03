@@ -25,7 +25,15 @@ import {
   listAll,
   deleteObject
 } from 'firebase/storage';
-import { collection, addDoc, query, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { 
+  collection, 
+  addDoc, 
+  query, 
+  where, 
+  getDocs, 
+  deleteDoc,
+  doc
+} from 'firebase/firestore';
 import { storage, db } from '../../config/firebase';
 import { useAuth } from '../../hooks/useAuth';
 
